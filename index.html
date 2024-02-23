@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reminder App</title>
+  <script src="https://unpkg.com/htmx.org@1.6.0/dist/htmx.min.js"></script>
+</head>
+
+<body>
+  <h1>Reminder App</h1>
+
+  <!-- Form to add a new reminder -->
+  <form id="reminderForm" hx-post="/reminders" hx-trigger="submit" hx-target="#messageContainer">
+    <label for="title">Title:</label><br>
+    <input type="text" id="title" name="title" hx-post="true"><br>
+    <label for="content">Content:</label><br>
+    <textarea id="content" name="content" hx-post="true"></textarea><br>
+    <button type="submit">Add Reminder</button>
+  </form>
+
+  <!-- Container to display reminders -->
+  <div id="messageContainer" hx-get="/reminders" hx-trigger="htmx:afterRequest htmx:afterSwap">
+    <h2>Reminders:</h2>
+    <ul>
+      <li hx-swap="outerHTML">
+        <strong hx-var="title"></strong>: <span hx-var="content"></span>
+      </li>
+    </ul>
+  </div>
+</body>
+
+</html>

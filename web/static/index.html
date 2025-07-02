@@ -5,7 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reminder App</title>
-  <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
     * {
@@ -332,18 +331,13 @@
             <input
               type="text"
               id="searchQuery"
-              name="query"
               class="search-input"
               placeholder="Search your reminders..."
-              hx-get="/search"
-              hx-target="#searchResults"
-              hx-trigger="keyup changed delay:300ms"
-              hx-indicator="#search-spinner"
             >
           </div>
         </div>
         <div class="search-results">
-          <div id="search-spinner" class="loading htmx-indicator">
+          <div id="search-spinner" class="loading" style="display: none;">
             <div class="spinner"></div>
             Searching...
           </div>
@@ -354,7 +348,7 @@
       <!-- Add Reminder Form -->
       <div class="card">
         <h2><i class="fas fa-plus-circle"></i> Add New Reminder</h2>
-        <form hx-post="/reminders" hx-target="#remindersList" hx-swap="afterbegin" hx-on::after-request="this.reset(); htmx.trigger('#remindersList', 'refresh')">
+        <form id="reminderForm">
           <div class="form-group">
             <label for="title"><i class="fas fa-heading"></i> Title</label>
             <input type="text" id="title" name="title" placeholder="Enter reminder title..." required>
@@ -363,7 +357,7 @@
             <label for="content"><i class="fas fa-align-left"></i> Content</label>
             <textarea id="content" name="content" rows="4" placeholder="Add details about your reminder..."></textarea>
           </div>
-          <button type="submit" class="btn">
+          <button type="submit" class="btn" id="submitBtn">
             <i class="fas fa-plus"></i> Add Reminder
           </button>
         </form>
@@ -374,11 +368,11 @@
     <div class="reminders-section">
       <div class="section-header">
         <h2><i class="fas fa-list"></i> Your Reminders</h2>
-        <button class="btn btn-secondary" onclick="refreshReminders()">
+        <button class="btn btn-secondary" onclick="loadReminders()">
           <i class="fas fa-sync-alt"></i> Refresh
         </button>
       </div>
-      <div id="remindersList" hx-get="/reminders" hx-trigger="load, refresh from:body">
+      <div id="remindersList">
         <div class="loading">
           <div class="spinner"></div>
           Loading your reminders...
@@ -388,39 +382,254 @@
   </div>
 
   <script>
-    function clearSearch() {
-      document.getElementById('searchQuery').value = '';
-      document.getElementById('searchResults').innerHTML = '';
-    }
+    // API functions
+    async function apiCall(url, options = {}) {
+      try {
+        const response = await fetch(url, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+          },
+          ...options
+        });
 
-    function refreshReminders() {
-      htmx.trigger('#remindersList', 'refresh');
-    }
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-    function deleteReminder(id) {
-      if (confirm('Are you sure you want to delete this reminder?')) {
-        fetch(`/reminders/${id}`, { method: 'DELETE' })
-          .then(() => refreshReminders())
-          .catch(err => console.error('Error deleting reminder:', err));
+        return await response.json();
+      } catch (error) {
+        console.error('API call failed:', error);
+        throw error;
       }
     }
 
-    // Auto-refresh reminders list after adding a new one
-    document.body.addEventListener('htmx:afterRequest', function(evt) {
-      if (evt.detail.xhr.status === 201 && evt.detail.requestConfig.verb === 'post') {
-        // Add fade-in animation to new items
+    // Format date helper
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diff = now - date;
+
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+
+      if (minutes < 1) return 'Just now';
+      if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+      if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+      if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
+
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    // Render reminder HTML
+    function renderReminder(reminder) {
+      return `
+        <div class="reminder-item fade-in">
+          <div class="reminder-header">
+            <div>
+              <div class="reminder-title">${escapeHtml(reminder.title)}</div>
+              <div class="reminder-date">
+                <i class="fas fa-clock"></i> ${formatDate(reminder.created_at)}
+              </div>
+            </div>
+          </div>
+          <div class="reminder-content">${escapeHtml(reminder.content)}</div>
+          <div class="reminder-actions">
+            <button class="btn btn-small btn-danger" onclick="deleteReminder(${reminder.id})">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Load and display reminders
+    async function loadReminders() {
+      const remindersList = document.getElementById('remindersList');
+      remindersList.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          Loading your reminders...
+        </div>
+      `;
+
+      try {
+        const reminders = await apiCall('/reminders');
+
+        if (reminders.length === 0) {
+          remindersList.innerHTML = `
+            <div class="no-results">
+              <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
+              <p>No reminders yet. Create your first reminder above!</p>
+            </div>
+          `;
+        } else {
+          remindersList.innerHTML = reminders.map(renderReminder).join('');
+        }
+      } catch (error) {
+        remindersList.innerHTML = `
+          <div class="no-results">
+            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px; color: #e53e3e;"></i>
+            <p>Failed to load reminders. Please try again.</p>
+          </div>
+        `;
+      }
+    }
+
+    // Search reminders
+    let searchTimeout;
+    async function searchReminders(query) {
+      const searchResults = document.getElementById('searchResults');
+      const searchSpinner = document.getElementById('search-spinner');
+
+      if (!query.trim()) {
+        searchResults.innerHTML = '';
+        return;
+      }
+
+      searchSpinner.style.display = 'flex';
+
+      try {
+        const results = await apiCall(`/search?query=${encodeURIComponent(query)}`);
+
+        if (results.total === 0) {
+          searchResults.innerHTML = `
+            <div class="no-results">
+              <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i>
+              <p>No reminders found for "${escapeHtml(query)}".</p>
+            </div>
+          `;
+        } else {
+          searchResults.innerHTML = `
+            <h3><i class="fas fa-search-plus"></i> Found ${results.total} result(s) for "${escapeHtml(query)}"</h3>
+            ${results.results.map(renderReminder).join('')}
+          `;
+        }
+      } catch (error) {
+        searchResults.innerHTML = `
+          <div class="no-results">
+            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px; color: #e53e3e;"></i>
+            <p>Search failed. Please try again.</p>
+          </div>
+        `;
+      } finally {
+        searchSpinner.style.display = 'none';
+      }
+    }
+
+    // Create new reminder
+    async function createReminder(title, content) {
+      const submitBtn = document.getElementById('submitBtn');
+      const originalText = submitBtn.innerHTML;
+
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+      submitBtn.disabled = true;
+
+      try {
+        const reminder = await apiCall('/reminders', {
+          method: 'POST',
+          body: JSON.stringify({ title, content })
+        });
+
+        // Add to top of list with animation
+        const remindersList = document.getElementById('remindersList');
+        const newReminderHtml = renderReminder(reminder);
+
+        if (remindersList.querySelector('.no-results')) {
+          remindersList.innerHTML = newReminderHtml;
+        } else {
+          remindersList.insertAdjacentHTML('afterbegin', newReminderHtml);
+        }
+
+        // Reset form
+        document.getElementById('reminderForm').reset();
+
+        // Show success message briefly
+        submitBtn.innerHTML = '<i class="fas fa-check"></i> Added!';
         setTimeout(() => {
-          const newItems = document.querySelectorAll('.reminder-item:not(.fade-in)');
-          newItems.forEach(item => item.classList.add('fade-in'));
-        }, 100);
-      }
-    });
+          submitBtn.innerHTML = originalText;
+        }, 2000);
 
-    // Clear search when input is empty
-    document.getElementById('searchQuery').addEventListener('input', function(e) {
-      if (e.target.value === '') {
-        document.getElementById('searchResults').innerHTML = '';
+      } catch (error) {
+        submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+        setTimeout(() => {
+          submitBtn.innerHTML = originalText;
+        }, 3000);
+      } finally {
+        submitBtn.disabled = false;
       }
+    }
+
+    // Delete reminder
+    async function deleteReminder(id) {
+      if (!confirm('Are you sure you want to delete this reminder?')) {
+        return;
+      }
+
+      try {
+        await fetch(`/reminders/${id}`, { method: 'DELETE' });
+
+        // Remove from DOM with animation
+        const reminderElement = event.target.closest('.reminder-item');
+        if (reminderElement) {
+          reminderElement.style.opacity = '0';
+          reminderElement.style.transform = 'translateX(-100%)';
+          setTimeout(() => {
+            reminderElement.remove();
+
+            // Check if list is empty
+            const remindersList = document.getElementById('remindersList');
+            if (!remindersList.querySelector('.reminder-item')) {
+              remindersList.innerHTML = `
+                <div class="no-results">
+                  <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
+                  <p>No reminders yet. Create your first reminder above!</p>
+                </div>
+              `;
+            }
+          }, 300);
+        }
+      } catch (error) {
+        alert('Failed to delete reminder. Please try again.');
+      }
+    }
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      // Load reminders on page load
+      loadReminders();
+
+      // Search functionality with debounce
+      const searchInput = document.getElementById('searchQuery');
+      searchInput.addEventListener('input', function(e) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          searchReminders(e.target.value);
+        }, 300);
+      });
+
+      // Form submission
+      document.getElementById('reminderForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const title = document.getElementById('title').value.trim();
+        const content = document.getElementById('content').value.trim();
+
+        if (title) {
+          createReminder(title, content);
+        }
+      });
     });
   </script>
 </body>

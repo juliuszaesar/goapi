@@ -41,7 +41,7 @@ services:
     build: .
     restart: always
     ports:
-      - "8080:8080"
+      - "3000:3000"
     environment:
       DB_HOST: db
       DB_USER: goapi
@@ -52,7 +52,7 @@ services:
       TYPESENSE_HOST: typesense
       TYPESENSE_PORT: 8108
       TYPESENSE_API_KEY: xyz
-      SERVER_PORT: 8080
+      SERVER_PORT: 3000
     depends_on:
       - db
       - typesense

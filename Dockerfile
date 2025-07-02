@@ -40,8 +40,8 @@ RUN chown -R appuser:appuser /home/appuser/
 # Switch to non-root user
 USER appuser
 
-# Expose port 8080 to the outside world
-EXPOSE 8080
+# Expose port 3000 to the outside world
+EXPOSE 3000
 
 # Command to run the executable
 CMD ["./reminder-api"]

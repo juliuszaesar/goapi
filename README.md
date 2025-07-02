@@ -53,8 +53,8 @@ docker-compose up -d
 ```
 
 3. Access the application:
-- **Web App**: http://localhost:8080
-- **API**: http://localhost:8080/api
+- **Web App**: http://localhost:3000
+- **API**: http://localhost:3000/api
 - **PgAdmin**: http://localhost:5050 (admin@example.com / admin)
 
 ### Local Development
@@ -100,7 +100,7 @@ go run cmd/server/main.go
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SERVER_PORT` | `8080` | Server port |
+| `SERVER_PORT` | `3000` | Server port |
 | `DB_HOST` | `localhost` | Database host |
 | `DB_USER` | `goapi` | Database user |
 | `DB_PASSWORD` | `password` | Database password |

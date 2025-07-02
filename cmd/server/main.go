@@ -8,6 +8,7 @@ import (
 	"goapi/internal/search"
 	"goapi/internal/services"
 	"log"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -66,11 +67,33 @@ func main() {
 
 func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 	dsn := cfg.Database.GetDSN()
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+
+	var db *gorm.DB
+	var err error
+
+	// Retry database connection up to 30 times (30 seconds with 1 second intervals)
+	maxRetries := 30
+	for i := 0; i < maxRetries; i++ {
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err == nil {
+			// Test the connection
+			sqlDB, err := db.DB()
+			if err == nil {
+				err = sqlDB.Ping()
+				if err == nil {
+					log.Printf("Successfully connected to database after %d attempts", i+1)
+					return db, nil
+				}
+			}
+		}
+
+		if i < maxRetries-1 {
+			log.Printf("Failed to connect to database (attempt %d/%d): %v. Retrying in 1 second...", i+1, maxRetries, err)
+			time.Sleep(1 * time.Second)
+		}
 	}
-	return db, nil
+
+	return nil, fmt.Errorf("failed to connect to database after %d attempts: %w", maxRetries, err)
 }
 
 func setupRoutes(e *echo.Echo, reminderHandler *handlers.ReminderHandler) {

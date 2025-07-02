@@ -12,6 +12,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goapi -d goapi"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - app-network
 
@@ -54,8 +59,10 @@ services:
       TYPESENSE_API_KEY: xyz
       SERVER_PORT: 3000
     depends_on:
-      - db
-      - typesense
+      db:
+        condition: service_healthy
+      typesense:
+        condition: service_started
     networks:
       - app-network
 

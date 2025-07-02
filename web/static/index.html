@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reminder App</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .reminder-item {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      background-color: #f9f9f9;
+    }
+    .reminder-title {
+      font-weight: bold;
+      font-size: 1.1em;
+      margin-bottom: 5px;
+    }
+    .reminder-content {
+      color: #666;
+    }
+    .search-section {
+      background-color: #f0f0f0;
+      padding: 20px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    .no-results {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Reminder App</h1>
+
+  <!-- Search Section -->
+  <div class="search-section">
+    <h2>Search Reminders</h2>
+    <form hx-get="/search" hx-target="#searchResults" hx-trigger="submit">
+      <div class="form-group">
+        <label for="searchQuery">Search:</label>
+        <input type="text" id="searchQuery" name="query" placeholder="Enter search terms..." required>
+      </div>
+      <button type="submit">Search</button>
+      <button type="button" onclick="clearSearch()">Clear</button>
+    </form>
+    <div id="searchResults"></div>
+  </div>
+
+  <!-- Form to add a new reminder -->
+  <div>
+    <h2>Add New Reminder</h2>
+    <form hx-post="/reminders" hx-target="#remindersList" hx-swap="afterbegin" hx-on::after-request="this.reset()">
+      <div class="form-group">
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title" required>
+      </div>
+      <div class="form-group">
+        <label for="content">Content:</label>
+        <textarea id="content" name="content" rows="4"></textarea>
+      </div>
+      <button type="submit">Add Reminder</button>
+    </form>
+  </div>
+
+  <!-- Container to display all reminders -->
+  <div>
+    <h2>All Reminders</h2>
+    <div id="remindersList" hx-get="/reminders" hx-trigger="load">
+      Loading reminders...
+    </div>
+  </div>
+
+  <script>
+    function clearSearch() {
+      document.getElementById('searchQuery').value = '';
+      document.getElementById('searchResults').innerHTML = '';
+    }
+
+    // Auto-refresh reminders list after adding a new one
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+      if (evt.detail.xhr.status === 201 && evt.detail.requestConfig.verb === 'post') {
+        htmx.trigger('#remindersList', 'load');
+      }
+    });
+  </script>
+</body>
+
+</html>

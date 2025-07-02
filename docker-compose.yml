@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   db:
-    image: postgres:latest
+    image: postgres:15-alpine
     restart: always
     environment:
       POSTGRES_USER: goapi
@@ -10,8 +10,21 @@ services:
       POSTGRES_DB: goapi
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
-      - pg-network
+      - app-network
+
+  typesense:
+    image: typesense/typesense:26.0
+    restart: always
+    ports:
+      - "8108:8108"
+    volumes:
+      - typesense_data:/data
+    command: '--data-dir /data --api-key=xyz --enable-cors'
+    networks:
+      - app-network
 
   pgadmin:
     image: dpage/pgadmin4
@@ -22,8 +35,34 @@ services:
     ports:
       - "5050:80"
     networks:
-      - pg-network
+      - app-network
+
+  app:
+    build: .
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: db
+      DB_USER: goapi
+      DB_PASSWORD: password
+      DB_NAME: goapi
+      DB_PORT: 5432
+      DB_SSLMODE: disable
+      TYPESENSE_HOST: typesense
+      TYPESENSE_PORT: 8108
+      TYPESENSE_API_KEY: xyz
+      SERVER_PORT: 8080
+    depends_on:
+      - db
+      - typesense
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  typesense_data:
 
 networks:
-  pg-network:
+  app-network:
 

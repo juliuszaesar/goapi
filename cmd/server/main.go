@@ -97,10 +97,7 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 }
 
 func setupRoutes(e *echo.Echo, reminderHandler *handlers.ReminderHandler) {
-	// Static files
-	e.Static("/", "web/static")
-
-	// API routes
+	// API routes (defined first to take precedence)
 	api := e.Group("/api")
 	{
 		api.POST("/reminders", reminderHandler.CreateReminder)
@@ -111,9 +108,12 @@ func setupRoutes(e *echo.Echo, reminderHandler *handlers.ReminderHandler) {
 		api.GET("/search", reminderHandler.SearchReminders)
 	}
 
-	// Legacy routes for backward compatibility
+	// Direct API routes for frontend compatibility
 	e.POST("/reminders", reminderHandler.CreateReminder)
 	e.GET("/reminders", reminderHandler.GetReminders)
 	e.DELETE("/reminders/:id", reminderHandler.DeleteReminder)
 	e.GET("/search", reminderHandler.SearchReminders)
+
+	// Static files (defined last so API routes take precedence)
+	e.Static("/", "web/static")
 }

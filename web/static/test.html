@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JavaScript Test</title>
+</head>
+<body>
+    <h1>JavaScript Test</h1>
+    <div id="test-output">Loading...</div>
+    
+    <script>
+        console.log('JavaScript is working!');
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded');
+            document.getElementById('test-output').innerHTML = 'JavaScript is working correctly!';
+            
+            // Test API call
+            fetch('/reminders')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('API data:', data);
+                    document.getElementById('test-output').innerHTML += '<br>API call successful: ' + data.length + ' reminders found';
+                })
+                .catch(error => {
+                    console.error('API error:', error);
+                    document.getElementById('test-output').innerHTML += '<br>API call failed: ' + error.message;
+                });
+        });
+    </script>
+</body>
+</html>

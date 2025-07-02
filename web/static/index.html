@@ -335,6 +335,11 @@
               placeholder="Search your reminders..."
             >
           </div>
+          <div style="margin-top: 10px;">
+            <button type="button" class="btn btn-secondary" onclick="clearSearch()">
+              <i class="fas fa-times"></i> Clear
+            </button>
+          </div>
         </div>
         <div class="search-results">
           <div id="search-spinner" class="loading" style="display: none;">
@@ -382,26 +387,26 @@
   </div>
 
   <script>
-    // API functions
+    console.log('Script loaded');
+
+    // Simple API call function
     async function apiCall(url, options = {}) {
-      try {
-        const response = await fetch(url, {
-          headers: {
-            'Content-Type': 'application/json',
-            ...options.headers
-          },
-          ...options
-        });
+      console.log('Making API call to:', url);
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers
+        },
+        ...options
+      });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return await response.json();
-      } catch (error) {
-        console.error('API call failed:', error);
-        throw error;
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      const data = await response.json();
+      console.log('API response received:', data);
+      return data;
     }
 
     // Format date helper
@@ -428,17 +433,22 @@
 
     // Render reminder HTML
     function renderReminder(reminder) {
+      console.log('Rendering reminder:', reminder);
+      const title = reminder.title || 'Untitled';
+      const content = reminder.content || '';
+      const createdAt = reminder.created_at || new Date().toISOString();
+
       return `
         <div class="reminder-item fade-in">
           <div class="reminder-header">
             <div>
-              <div class="reminder-title">${escapeHtml(reminder.title)}</div>
+              <div class="reminder-title">${escapeHtml(title)}</div>
               <div class="reminder-date">
-                <i class="fas fa-clock"></i> ${formatDate(reminder.created_at)}
+                <i class="fas fa-clock"></i> ${formatDate(createdAt)}
               </div>
             </div>
           </div>
-          <div class="reminder-content">${escapeHtml(reminder.content)}</div>
+          <div class="reminder-content">${escapeHtml(content)}</div>
           <div class="reminder-actions">
             <button class="btn btn-small btn-danger" onclick="deleteReminder(${reminder.id})">
               <i class="fas fa-trash"></i> Delete
@@ -457,34 +467,52 @@
 
     // Load and display reminders
     async function loadReminders() {
+      console.log('loadReminders called');
       const remindersList = document.getElementById('remindersList');
-      remindersList.innerHTML = `
-        <div class="loading">
-          <div class="spinner"></div>
-          Loading your reminders...
-        </div>
-      `;
+
+      if (!remindersList) {
+        console.error('remindersList element not found');
+        return;
+      }
+
+      console.log('Setting loading state');
+      remindersList.innerHTML = '<div class="loading"><div class="spinner"></div>Loading your reminders...</div>';
 
       try {
+        console.log('Fetching reminders from API');
         const reminders = await apiCall('/reminders');
+        console.log('Got reminders:', reminders.length, 'items');
 
-        if (reminders.length === 0) {
-          remindersList.innerHTML = `
-            <div class="no-results">
-              <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
-              <p>No reminders yet. Create your first reminder above!</p>
-            </div>
-          `;
+        if (!Array.isArray(reminders) || reminders.length === 0) {
+          remindersList.innerHTML = '<div class="no-results"><p>No reminders yet. Create your first reminder above!</p></div>';
         } else {
-          remindersList.innerHTML = reminders.map(renderReminder).join('');
+          let html = '';
+          reminders.forEach(reminder => {
+            html += `
+              <div class="reminder-item fade-in">
+                <div class="reminder-header">
+                  <div>
+                    <div class="reminder-title">${reminder.title || 'Untitled'}</div>
+                    <div class="reminder-date">
+                      <i class="fas fa-clock"></i> ${new Date(reminder.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+                <div class="reminder-content">${reminder.content || ''}</div>
+                <div class="reminder-actions">
+                  <button class="btn btn-small btn-danger" onclick="deleteReminder(${reminder.id})">
+                    <i class="fas fa-trash"></i> Delete
+                  </button>
+                </div>
+              </div>
+            `;
+          });
+          remindersList.innerHTML = html;
+          console.log('Rendered', reminders.length, 'reminders');
         }
       } catch (error) {
-        remindersList.innerHTML = `
-          <div class="no-results">
-            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px; color: #e53e3e;"></i>
-            <p>Failed to load reminders. Please try again.</p>
-          </div>
-        `;
+        console.error('Failed to load reminders:', error);
+        remindersList.innerHTML = '<div class="no-results"><p>Failed to load reminders. Please try again.</p></div>';
       }
     }
 
@@ -606,30 +634,20 @@
       }
     }
 
-    // Event listeners
+    // Clear search function
+    function clearSearch() {
+      document.getElementById('searchQuery').value = '';
+      document.getElementById('searchResults').innerHTML = '';
+    }
+
+    // Initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
-      // Load reminders on page load
+      console.log('DOM loaded, initializing app...');
+
+      // Load reminders immediately
       loadReminders();
 
-      // Search functionality with debounce
-      const searchInput = document.getElementById('searchQuery');
-      searchInput.addEventListener('input', function(e) {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          searchReminders(e.target.value);
-        }, 300);
-      });
-
-      // Form submission
-      document.getElementById('reminderForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const title = document.getElementById('title').value.trim();
-        const content = document.getElementById('content').value.trim();
-
-        if (title) {
-          createReminder(title, content);
-        }
-      });
+      console.log('App initialized');
     });
   </script>
 </body>

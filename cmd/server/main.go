@@ -91,5 +91,6 @@ func setupRoutes(e *echo.Echo, reminderHandler *handlers.ReminderHandler) {
 	// Legacy routes for backward compatibility
 	e.POST("/reminders", reminderHandler.CreateReminder)
 	e.GET("/reminders", reminderHandler.GetReminders)
+	e.DELETE("/reminders/:id", reminderHandler.DeleteReminder)
 	e.GET("/search", reminderHandler.SearchReminders)
 }

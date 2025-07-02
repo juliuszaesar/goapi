@@ -176,6 +176,10 @@ func (s *httpSearchService) SearchReminders(query string, limit int) (*models.Se
 			reminder.Content = content
 		}
 
+		if createdAtFloat, ok := hit.Document["created_at"].(float64); ok {
+			reminder.CreatedAt = time.Unix(int64(createdAtFloat), 0)
+		}
+
 		reminders = append(reminders, reminder)
 	}
 

@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"fmt"
 	"goapi/internal/models"
 	"goapi/internal/search"
 	"goapi/internal/services"
+	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -24,10 +28,100 @@ func NewReminderHandler(reminderService services.ReminderService, searchService 
 	}
 }
 
+// formatDate formats a time.Time to a human-readable string
+func formatDate(t time.Time) string {
+	now := time.Now()
+	diff := now.Sub(t)
+
+	if diff < time.Minute {
+		return "Just now"
+	} else if diff < time.Hour {
+		minutes := int(diff.Minutes())
+		if minutes == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", minutes)
+	} else if diff < 24*time.Hour {
+		hours := int(diff.Hours())
+		if hours == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", hours)
+	} else if diff < 7*24*time.Hour {
+		days := int(diff.Hours() / 24)
+		if days == 1 {
+			return "1 day ago"
+		}
+		return fmt.Sprintf("%d days ago", days)
+	}
+	return t.Format("Jan 2, 2006")
+}
+
+// renderReminderHTML renders a single reminder as HTML
+func renderReminderHTML(reminder models.ReminderResponse) string {
+	return fmt.Sprintf(`
+		<div class="reminder-item fade-in">
+			<div class="reminder-header">
+				<div>
+					<div class="reminder-title">%s</div>
+					<div class="reminder-date">
+						<i class="fas fa-clock"></i> %s
+					</div>
+				</div>
+			</div>
+			<div class="reminder-content">%s</div>
+			<div class="reminder-actions">
+				<button class="btn btn-small btn-danger" onclick="deleteReminder(%d)">
+					<i class="fas fa-trash"></i> Delete
+				</button>
+			</div>
+		</div>`,
+		template.HTMLEscapeString(reminder.Title),
+		formatDate(reminder.CreatedAt),
+		template.HTMLEscapeString(reminder.Content),
+		reminder.ID,
+	)
+}
+
+// renderRemindersListHTML renders a list of reminders as HTML
+func renderRemindersListHTML(reminders []models.ReminderResponse) string {
+	if len(reminders) == 0 {
+		return `<div class="no-results">
+			<i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
+			<p>No reminders yet. Create your first reminder above!</p>
+		</div>`
+	}
+
+	var html strings.Builder
+	for _, reminder := range reminders {
+		html.WriteString(renderReminderHTML(reminder))
+	}
+	return html.String()
+}
+
+// renderSearchResultsHTML renders search results as HTML
+func renderSearchResultsHTML(results *models.SearchResponse) string {
+	if results.Total == 0 {
+		return `<div class="no-results">
+			<i class="fas fa-search" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i>
+			<p>No reminders found for your search.</p>
+		</div>`
+	}
+
+	var html strings.Builder
+	html.WriteString(fmt.Sprintf(`<h3><i class="fas fa-search-plus"></i> Found %d result(s) for "%s"</h3>`,
+		results.Total, template.HTMLEscapeString(results.Query)))
+
+	for _, reminder := range results.Results {
+		html.WriteString(renderReminderHTML(reminder))
+	}
+	return html.String()
+}
+
 // CreateReminder handles POST /reminders
 func (h *ReminderHandler) CreateReminder(c echo.Context) error {
 	var req models.ReminderRequest
-	
+
 	// Bind form data or JSON
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
@@ -50,6 +144,12 @@ func (h *ReminderHandler) CreateReminder(c echo.Context) error {
 		c.Logger().Errorf("Failed to index reminder in search: %v", err)
 	}
 
+	// Check if request wants HTML (from HTMX)
+	if c.Request().Header.Get("HX-Request") == "true" {
+		html := renderReminderHTML(reminder.ToResponse())
+		return c.HTML(http.StatusCreated, html)
+	}
+
 	return c.JSON(http.StatusCreated, reminder.ToResponse())
 }
 
@@ -63,6 +163,12 @@ func (h *ReminderHandler) GetReminders(c echo.Context) error {
 	var responses []models.ReminderResponse
 	for _, reminder := range reminders {
 		responses = append(responses, reminder.ToResponse())
+	}
+
+	// Check if request wants HTML (from HTMX)
+	if c.Request().Header.Get("HX-Request") == "true" {
+		html := renderRemindersListHTML(responses)
+		return c.HTML(http.StatusOK, html)
 	}
 
 	return c.JSON(http.StatusOK, responses)
@@ -138,6 +244,10 @@ func (h *ReminderHandler) DeleteReminder(c echo.Context) error {
 func (h *ReminderHandler) SearchReminders(c echo.Context) error {
 	query := c.QueryParam("query")
 	if query == "" {
+		// Return empty results for empty query instead of error
+		if c.Request().Header.Get("HX-Request") == "true" {
+			return c.HTML(http.StatusOK, "")
+		}
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Query parameter is required"})
 	}
 
@@ -151,7 +261,19 @@ func (h *ReminderHandler) SearchReminders(c echo.Context) error {
 
 	results, err := h.searchService.SearchReminders(query, limit)
 	if err != nil {
+		if c.Request().Header.Get("HX-Request") == "true" {
+			return c.HTML(http.StatusOK, `<div class="no-results">
+				<i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i>
+				<p>Search failed. Please try again.</p>
+			</div>`)
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Search failed"})
+	}
+
+	// Check if request wants HTML (from HTMX)
+	if c.Request().Header.Get("HX-Request") == "true" {
+		html := renderSearchResultsHTML(results)
+		return c.HTML(http.StatusOK, html)
 	}
 
 	return c.JSON(http.StatusOK, results)

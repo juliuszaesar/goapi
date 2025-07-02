@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reminder App</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      color: white;
+    }
+
+    .header h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .header p {
+      font-size: 1.2rem;
+      opacity: 0.9;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+
+    @media (max-width: 768px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      color: #2d3748;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #4a5568;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 15px 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .search-input {
+      padding-left: 50px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #a0aec0;
+      font-size: 18px;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #4a5568;
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e0;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .reminders-section {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 25px;
+    }
+
+    .section-header h2 {
+      font-size: 1.8rem;
+      color: #2d3748;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .reminder-item {
+      background: white;
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      border: 1px solid #f7fafc;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .reminder-item::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 4px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .reminder-item:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+
+    .reminder-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+    }
+
+    .reminder-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 5px;
+    }
+
+    .reminder-date {
+      font-size: 0.85rem;
+      color: #a0aec0;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .reminder-content {
+      color: #4a5568;
+      line-height: 1.6;
+      font-size: 1rem;
+    }
+
+    .reminder-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 14px;
+      border-radius: 8px;
+    }
+
+    .btn-danger {
+      background: #e53e3e;
+    }
+
+    .btn-danger:hover {
+      background: #c53030;
+      box-shadow: 0 5px 15px rgba(229, 62, 62, 0.3);
+    }
+
+    .search-results {
+      margin-top: 20px;
+    }
+
+    .search-results h3 {
+      color: #4a5568;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+
+    .no-results {
+      text-align: center;
+      color: #a0aec0;
+      font-style: italic;
+      padding: 40px;
+      background: #f7fafc;
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      color: #a0aec0;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #e2e8f0;
+      border-top: 2px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .search-highlight {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1><i class="fas fa-sticky-note"></i> Reminder App</h1>
+      <p>Organize your thoughts and never forget important tasks</p>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+      <!-- Search Section -->
+      <div class="card">
+        <h2><i class="fas fa-search"></i> Search Reminders</h2>
+        <div class="form-group">
+          <div class="input-wrapper">
+            <i class="fas fa-search search-icon"></i>
+            <input
+              type="text"
+              id="searchQuery"
+              class="search-input"
+              placeholder="Search your reminders..."
+            >
+          </div>
+          <div style="margin-top: 10px;">
+            <button type="button" class="btn btn-secondary" onclick="clearSearch()">
+              <i class="fas fa-times"></i> Clear
+            </button>
+          </div>
+        </div>
+        <div class="search-results">
+          <div id="search-spinner" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            Searching...
+          </div>
+          <div id="searchResults"></div>
+        </div>
+      </div>
+
+      <!-- Add Reminder Form -->
+      <div class="card">
+        <h2><i class="fas fa-plus-circle"></i> Add New Reminder</h2>
+        <form id="reminderForm">
+          <div class="form-group">
+            <label for="title"><i class="fas fa-heading"></i> Title</label>
+            <input type="text" id="title" name="title" placeholder="Enter reminder title..." required>
+          </div>
+          <div class="form-group">
+            <label for="content"><i class="fas fa-align-left"></i> Content</label>
+            <textarea id="content" name="content" rows="4" placeholder="Add details about your reminder..."></textarea>
+          </div>
+          <button type="submit" class="btn" id="submitBtn">
+            <i class="fas fa-plus"></i> Add Reminder
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Reminders Section -->
+    <div class="reminders-section">
+      <div class="section-header">
+        <h2><i class="fas fa-list"></i> Your Reminders</h2>
+        <button class="btn btn-secondary" onclick="loadReminders()">
+          <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+      </div>
+      <div id="remindersList">
+        <div class="loading">
+          <div class="spinner"></div>
+          Loading your reminders...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    console.log('Script loaded');
+
+    // Simple API call function
+    async function apiCall(url, options = {}) {
+      console.log('Making API call to:', url);
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers
+        },
+        ...options
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('API response received:', data);
+      return data;
+    }
+
+    // Format date helper
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diff = now - date;
+
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+
+      if (minutes < 1) return 'Just now';
+      if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+      if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+      if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
+
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    // Render reminder HTML
+    function renderReminder(reminder) {
+      console.log('Rendering reminder:', reminder);
+      const title = reminder.title || 'Untitled';
+      const content = reminder.content || '';
+      const createdAt = reminder.created_at || new Date().toISOString();
+
+      return `
+        <div class="reminder-item fade-in">
+          <div class="reminder-header">
+            <div>
+              <div class="reminder-title">${escapeHtml(title)}</div>
+              <div class="reminder-date">
+                <i class="fas fa-clock"></i> ${formatDate(createdAt)}
+              </div>
+            </div>
+          </div>
+          <div class="reminder-content">${escapeHtml(content)}</div>
+          <div class="reminder-actions">
+            <button class="btn btn-small btn-danger" onclick="deleteReminder(${reminder.id})">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Load and display reminders
+    async function loadReminders() {
+      console.log('loadReminders called');
+      const remindersList = document.getElementById('remindersList');
+
+      if (!remindersList) {
+        console.error('remindersList element not found');
+        return;
+      }
+
+      console.log('Setting loading state');
+      remindersList.innerHTML = '<div class="loading"><div class="spinner"></div>Loading your reminders...</div>';
+
+      try {
+        console.log('Fetching reminders from API');
+        const reminders = await apiCall('/reminders');
+        console.log('Got reminders:', reminders.length, 'items');
+
+        if (!Array.isArray(reminders) || reminders.length === 0) {
+          remindersList.innerHTML = '<div class="no-results"><p>No reminders yet. Create your first reminder above!</p></div>';
+        } else {
+          let html = '';
+          reminders.forEach(reminder => {
+            html += `
+              <div class="reminder-item fade-in">
+                <div class="reminder-header">
+                  <div>
+                    <div class="reminder-title">${reminder.title || 'Untitled'}</div>
+                    <div class="reminder-date">
+                      <i class="fas fa-clock"></i> ${new Date(reminder.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+                <div class="reminder-content">${reminder.content || ''}</div>
+                <div class="reminder-actions">
+                  <button class="btn btn-small btn-danger" onclick="deleteReminder(${reminder.id})">
+                    <i class="fas fa-trash"></i> Delete
+                  </button>
+                </div>
+              </div>
+            `;
+          });
+          remindersList.innerHTML = html;
+          console.log('Rendered', reminders.length, 'reminders');
+        }
+      } catch (error) {
+        console.error('Failed to load reminders:', error);
+        remindersList.innerHTML = '<div class="no-results"><p>Failed to load reminders. Please try again.</p></div>';
+      }
+    }
+
+    // Search reminders
+    let searchTimeout;
+    async function searchReminders(query) {
+      const searchResults = document.getElementById('searchResults');
+      const searchSpinner = document.getElementById('search-spinner');
+
+      if (!query.trim()) {
+        searchResults.innerHTML = '';
+        return;
+      }
+
+      searchSpinner.style.display = 'flex';
+
+      try {
+        const results = await apiCall(`/search?query=${encodeURIComponent(query)}`);
+
+        if (results.total === 0) {
+          searchResults.innerHTML = `
+            <div class="no-results">
+              <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i>
+              <p>No reminders found for "${escapeHtml(query)}".</p>
+            </div>
+          `;
+        } else {
+          searchResults.innerHTML = `
+            <h3><i class="fas fa-search-plus"></i> Found ${results.total} result(s) for "${escapeHtml(query)}"</h3>
+            ${results.results.map(renderReminder).join('')}
+          `;
+        }
+      } catch (error) {
+        searchResults.innerHTML = `
+          <div class="no-results">
+            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px; color: #e53e3e;"></i>
+            <p>Search failed. Please try again.</p>
+          </div>
+        `;
+      } finally {
+        searchSpinner.style.display = 'none';
+      }
+    }
+
+    // Create new reminder
+    async function createReminder(title, content) {
+      const submitBtn = document.getElementById('submitBtn');
+      const originalText = submitBtn.innerHTML;
+
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+      submitBtn.disabled = true;
+
+      try {
+        const reminder = await apiCall('/reminders', {
+          method: 'POST',
+          body: JSON.stringify({ title, content })
+        });
+
+        // Add to top of list with animation
+        const remindersList = document.getElementById('remindersList');
+        const newReminderHtml = renderReminder(reminder);
+
+        if (remindersList.querySelector('.no-results')) {
+          remindersList.innerHTML = newReminderHtml;
+        } else {
+          remindersList.insertAdjacentHTML('afterbegin', newReminderHtml);
+        }
+
+        // Reset form
+        document.getElementById('reminderForm').reset();
+
+        // Show success message briefly
+        submitBtn.innerHTML = '<i class="fas fa-check"></i> Added!';
+        setTimeout(() => {
+          submitBtn.innerHTML = originalText;
+        }, 2000);
+
+      } catch (error) {
+        submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+        setTimeout(() => {
+          submitBtn.innerHTML = originalText;
+        }, 3000);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    // Delete reminder
+    async function deleteReminder(id) {
+      if (!confirm('Are you sure you want to delete this reminder?')) {
+        return;
+      }
+
+      try {
+        await fetch(`/reminders/${id}`, { method: 'DELETE' });
+
+        // Remove from DOM with animation
+        const reminderElement = event.target.closest('.reminder-item');
+        if (reminderElement) {
+          reminderElement.style.opacity = '0';
+          reminderElement.style.transform = 'translateX(-100%)';
+          setTimeout(() => {
+            reminderElement.remove();
+
+            // Check if list is empty
+            const remindersList = document.getElementById('remindersList');
+            if (!remindersList.querySelector('.reminder-item')) {
+              remindersList.innerHTML = `
+                <div class="no-results">
+                  <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
+                  <p>No reminders yet. Create your first reminder above!</p>
+                </div>
+              `;
+            }
+          }, 300);
+        }
+      } catch (error) {
+        alert('Failed to delete reminder. Please try again.');
+      }
+    }
+
+    // Clear search function
+    function clearSearch() {
+      document.getElementById('searchQuery').value = '';
+      document.getElementById('searchResults').innerHTML = '';
+    }
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, initializing app...');
+
+      // Load reminders immediately
+      loadReminders();
+
+      console.log('App initialized');
+    });
+  </script>
+</body>
+
+</html>
